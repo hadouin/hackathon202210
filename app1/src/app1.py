@@ -2,6 +2,7 @@ import json
 import os
 import time
 import shutil
+import asyncio
 from fact import cmd_fact
 from decrypt_frame import decode_frame
 from generateDLMSCMD import templating_dlms 
@@ -26,8 +27,41 @@ from sink_aggregation import sink_aggregation
 INPUT_FOLDER = "/data/input" 
 OUTPUT_FOLDER = "/data/output"
 
+async def chooseTask(command_type, command, f):
+    try:
+        if command_type == "prime_numbers":
+            output = await prime_numbers(**command.get("arguments"))
+        elif command_type == "sum_prime_numbers":
+            output = await sum_prime_numbers(**command.get("arguments"))  
+        elif command_type == "clone_product":
+            output = await clone_product(**command.get("arguments"))       
+        elif command_type == "delete_product":
+            output = await delete_product(**command.get("arguments"))
+        elif command_type == "sum_of_prices":
+            output = await sum_of_prices(**command.get("arguments"))      
+        elif command_type == "parse_transport_stream":
+            output = await parse_transport_stream(**command.get("arguments"))
+        elif command_type == "cmd_fact":
+            output = await cmd_fact(**command.get("arguments"))
+        elif command_type == "get_x_max":
+            output = await get_x_max(**command.get("arguments"))
+        elif command_type == "templating_dlms":
+            output = await templating_dlms(**command.get("arguments"))
+        elif command_type == "decode_frame":
+            output = await decode_frame(**command.get("arguments"))          
+        elif command_type == "sink_aggregation":
+            output = await sink_aggregation(**command.get("arguments"))
 
-def main():
+        else:
+            output = f"{command.get('type')} not handled"
+
+        f.write(f"{id} {output}\n")
+
+    except Exception as e:
+        print(e)
+
+
+async def main():
     while True:
 
         # List files under the input folder
@@ -40,7 +74,6 @@ def main():
 
         # We process the first file
         file = files[0]
-        time.sleep(5) # make sure that file is completely uploaded
         with open(os.path.join(INPUT_FOLDER, file), 'r') as f:
             try:
                 commands = json.load(f)
@@ -51,44 +84,19 @@ def main():
         tmp_path = f"/tmp/{os.path.splitext(file)[0]}.txt"
         print("tmp_path:", tmp_path)
 
+
+        ListOfTasks = []
         # For each command within the file perform an action
         with open(tmp_path, 'w') as f:
             for id, command in commands.items():
                 print(f"id: {id}, command: {command}")
+                command_type = command.get("type")
 
-                try:
-                    command_type = command.get("type")
-                    if command_type == "prime_numbers":
-                        output = prime_numbers(**command.get("arguments"))
-                    elif command_type == "sum_prime_numbers":
-                        output = sum_prime_numbers(**command.get("arguments"))    
-                    elif command_type == "clone_product":
-                        output = clone_product(**command.get("arguments"))        
-                    elif command_type == "delete_product":
-                        output = delete_product(**command.get("arguments"))
-                    elif command_type == "sum_of_prices":
-                        output = sum_of_prices(**command.get("arguments"))      
-                    elif command_type == "parse_transport_stream":
-                        output = parse_transport_stream(**command.get("arguments"))
-                    elif command_type == "cmd_fact":
-                        output = cmd_fact(**command.get("arguments"))
-                    elif command_type == "get_x_max":
-                        output = get_x_max(**command.get("arguments"))
-                    elif command_type == "templating_dlms":
-                        output = templating_dlms(**command.get("arguments"))
-                    elif command_type == "decode_frame":
-                        output = decode_frame(**command.get("arguments"))          
-                    elif command_type == "sink_aggregation":
-                        output = sink_aggregation(**command.get("arguments"))
+                ListOfTasks.append(chooseTask(command_type, command, f))
+                print('append to list' )
 
-                    else:
-                        output = f"{command.get('type')} not handled"
-
-                    f.write(f"{id} {output}\n")
-
-                except Exception as e:
-                    print(e)
-                    continue
+        await asyncio.gather(*ListOfTasks)
+                
 
         # Once the file is processed delete it
         os.remove(os.path.join(INPUT_FOLDER, file))
@@ -98,4 +106,4 @@ def main():
         
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -56,6 +56,7 @@ sudo apt-get install unzip -y
 # Install Python
 sudo apt-get -y install python3
 sudo apt-get -y install python3-pip
+sudo pip install asyncio
 
 # Install application
 mkdir /data/code
